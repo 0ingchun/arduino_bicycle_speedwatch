@@ -10,14 +10,14 @@
 
 
 #define circumference_wheel(r) (2 * M_PI *(r))
-
 float c_wheel = circumference_wheel(40);
 
 dht DHT;
-
-#define DHT11_PIN     5
+#define DHT11_PIN 5
 
 #define hall_pin 2
+#define touchButton_pin 3
+#define LED_BUILTIN 13
 
 MPU6050 mpu6050(Wire);
 
@@ -26,6 +26,7 @@ float speed = 0;
 /*--------------------------------------------------*/
 /*---------------------- Tasks ---------------------*/
 /*--------------------------------------------------*/
+
 
 void TaskBlink(void *pvParameters)  // This is a task.
 {
@@ -42,6 +43,7 @@ void TaskBlink(void *pvParameters)  // This is a task.
     vTaskDelay( 1000 / portTICK_PERIOD_MS ); // wait for one second
   }
 }
+
 
 MPU6050_data_t MPU6050_data_temp;
 MPU6050_data_t MPU6050_data_static;
@@ -84,6 +86,8 @@ void mpu6050_updater_offset(MPU6050_data_t *ptr)
   ptr->AngleZ = mpu6050.getAngleZ() - MPU6050_data_static.AngleZ;
 
 }
+
+
 // This is a task.
 void TaskMPU6050(void *pvParameters)  // This is a task.
 {
@@ -135,6 +139,7 @@ void TaskMPU6050(void *pvParameters)  // This is a task.
   }
 }
 
+
 void TaskHALL(void *pvParameters)  // This is a task.
 {
   (void) pvParameters;
@@ -157,6 +162,7 @@ if (MPU6050_data_temp.AccX < 0 ){
   }
 }
 
+
 void TaskDHT(void *pvParameters)
 {
   (void) pvParameters;
@@ -173,14 +179,19 @@ void TaskDHT(void *pvParameters)
 }
 
 
-
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NONE|U8G_I2C_OPT_DEV_0);	// I2C / TWI 
 void draw(void) {
   // graphic commands to redraw the complete screen should be placed here  
   u8g.setFont(u8g_font_unifont);
   //u8g.setFont(u8g_font_osb21);
   u8g.drawStr( 0, 22, "Hello World!");
+  u8g.drawStr( 0, 42,   "MPU6050");
+  u8g.drawStr( 0, 62, "DHT11");
+  u8g.drawStr( 0, 82, "MPU6050");
+  u8g.drawStr( 0, 102, "DHT11");
+
 }
+
 void TaskDISPLAY(void *pvParameters)
 {
   (void) pvParameters;
@@ -207,15 +218,18 @@ void TaskDISPLAY(void *pvParameters)
   }
 
   for (; ;){
-  // picture loop
+  picture loop
   u8g.firstPage();  
   do {
     draw();
+    vTaskDelay(50);
   } while( u8g.nextPage() );
+  draw();
   
   vTaskDelay( 100 / portTICK_PERIOD_MS );
   }
 }
+
 
 void setup() {
   // put your setup code here, to run once:
