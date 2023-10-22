@@ -1,6 +1,6 @@
 #include <Arduino.h>
+
 #include <math.h>
-#include <main.h>
 // #include <Arduino_FreeRTOS.h>
 // #include <MPU6050_tockn.h>
 #include <dht.h>
@@ -10,6 +10,7 @@
 #include "basicMPU6050.h"
 #include "imuFilter.h"
 
+#include <main.h>
 
 basicMPU6050<> imu;
 
@@ -21,21 +22,25 @@ float deltaTime = 0.01;  // 假设你每10毫秒读取一次数据
 // U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NONE|U8G_I2C_OPT_DEV_0);	// I2C / TWI 
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_DEV_0|U8G_I2C_OPT_NO_ACK|U8G_I2C_OPT_FAST);	// Fast I2C / TWI 
 
-const int buttonPin = 2;  // 按钮连接的引脚
+const int hallPin = 2;  // 按钮连接的引脚
 
 // #define PI 3.141592654
 
 
 // ========= hall functions ===========
-unsigned long hall_dt = 0;
+unsigned long hall_dt = 0 , hall_it = 0;
 double hall_v;
 
 void hall_speed() {
-
-    hall_v = ((64*PI)/hall_dt)*3.6;   //km/h
+    Serial.println("void hall_speed()");
 
     hall_dt = millis() - hall_dt;
+    Serial.println(hall_dt);
 
+    hall_v = ((64*PI)/(hall_dt*0.001))*3.6;   //km/h
+    Serial.println(hall_v);
+
+    hall_it = millis();
 }
 
 // ========= imu functions ===========
@@ -66,15 +71,15 @@ void draw(void) {
     u8g.setFont(u8g_font_unifont);
     // u8g.setFont(u8g_font_osb21);
     // u8g.drawStr( 0, 10, "Hello World!");
-    u8g.drawStr( 0, 12, "Vhall: ");
-    u8g_drawNumber(50, 12, hall_v);
+    u8g.drawStr( 0, 12, "Vh : ");
+    u8g_drawNumber(40, 12, hall_v);
     u8g.drawStr( 95, 12, "km/h");
     u8g.drawStr( 0, 25, "Vx = ");
-    u8g_drawNumber(50, 25, velocity.x);
+    u8g_drawNumber(40, 25, velocity.x);
     u8g.drawStr( 0, 40, "Vy = ");
-    u8g_drawNumber(50, 40, velocity.y);
+    u8g_drawNumber(40, 40, velocity.y);
     u8g.drawStr( 0, 55, "Vz = ");
-    u8g_drawNumber(50, 55, velocity.z);
+    u8g_drawNumber(40, 55, velocity.z);
     // u8g.drawStr( 0, 25, "Vx = ");
     // u8g_drawNumber(50, 25, imu.ax());
     // u8g.drawStr( 0, 40, "Vy = ");
@@ -88,16 +93,9 @@ void draw(void) {
 
     void setup() {
     Serial.begin(115200);
-        
-    // Calibrate imu
-    imu.setup();
-    imu.setBias();
-    
-    // Initialize filter: 
-    fusion.setup( imu.ax(), imu.ay(), imu.az() ); 
+    delay(50);
 
-
-    // flip screen, if required
+        // flip screen, if required
     // u8g.setRot180();
     
     // set SPI backup if required
@@ -118,10 +116,20 @@ void draw(void) {
     }
     
     pinMode(8, OUTPUT);
+    
+    //清空屏幕内容？？怎么写
 
+
+    // Calibrate imu
+    imu.setup();
+    imu.setBias();
+    
+    // Initialize filter: 
+    fusion.setup( imu.ax(), imu.ay(), imu.az() );
+
+    //霍尔传感器与中断函数初始化
     pinMode(2, INPUT);
-
-    attachInterrupt(digitalPinToInterrupt(buttonPin), hall_speed, RISING);
+    attachInterrupt(digitalPinToInterrupt(hallPin), hall_speed, RISING);
 }
 
 void loop() {  
@@ -166,6 +174,12 @@ void loop() {
     velocity.y += ay * deltaTime;
     velocity.z += az * deltaTime;
 
+    //////////////////////////////////
+
+    if(millis() - hall_it > 3*1000) {
+        hall_v = 0.00;
+    }
+
     // picture loop
     u8g.firstPage();  
     do {
@@ -173,6 +187,6 @@ void loop() {
     } while( u8g.nextPage() );
     
     // rebuild the picture after some delay
-    delay(10);
+    delay(deltaTime);
 
 }
