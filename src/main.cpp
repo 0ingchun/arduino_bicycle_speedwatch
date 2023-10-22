@@ -23,21 +23,25 @@ float deltaTime = 0.01;  // 假设你每10毫秒读取一次数据
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_DEV_0|U8G_I2C_OPT_NO_ACK|U8G_I2C_OPT_FAST);	// Fast I2C / TWI 
 
 const int hallPin = 2;  // 按钮连接的引脚
+const int ledPin = 13;  // LED连接的引脚
+const int buttonPin = 3;  // 按钮连接的引脚
+const int dhtPin = 5;  // 按钮连接的引脚
 
 // #define PI 3.141592654
 
+dht DHT;
 
 // ========= hall functions ===========
 unsigned long hall_dt = 0 , hall_it = 0;
 double hall_v;
 
-void hall_speed() {
+void hall_speed(void) {
     Serial.println("void hall_speed()");
 
-    hall_dt = millis() - hall_dt;
+    hall_dt = millis() - hall_it;
     Serial.println(hall_dt);
 
-    hall_v = ((64*PI)/(hall_dt*0.001))*3.6;   //km/h
+    hall_v = ((64*0.01*PI)/(hall_dt*0.001))*3.6;   //km/h
     Serial.println(hall_v);
 
     hall_it = millis();
@@ -74,12 +78,13 @@ void draw(void) {
     u8g.drawStr( 0, 12, "Vh : ");
     u8g_drawNumber(40, 12, hall_v);
     u8g.drawStr( 95, 12, "km/h");
-    u8g.drawStr( 0, 25, "Vx = ");
-    u8g_drawNumber(40, 25, velocity.x);
-    u8g.drawStr( 0, 40, "Vy = ");
-    u8g_drawNumber(40, 40, velocity.y);
-    u8g.drawStr( 0, 55, "Vz = ");
-    u8g_drawNumber(40, 55, velocity.z);
+
+    u8g.drawStr( 0, 25, "Ax = ");
+    u8g_drawNumber(40, 25, imu.ax() );
+    u8g.drawStr( 0, 40, "Ay = ");
+    u8g_drawNumber(40, 40, imu.ay() );
+    u8g.drawStr( 0, 55, "Az = ");
+    u8g_drawNumber(40, 55, imu.ax() );
     // u8g.drawStr( 0, 25, "Vx = ");
     // u8g_drawNumber(50, 25, imu.ax());
     // u8g.drawStr( 0, 40, "Vy = ");
@@ -88,6 +93,11 @@ void draw(void) {
     // u8g_drawNumber(50, 55, imu.az());
 }
 
+// ========= arduino functions ===========
+
+void button_touch(void) {
+    Serial.println("void button_touch()");
+}
 
 // ========= arduino functions ===========
 
@@ -130,6 +140,10 @@ void draw(void) {
     //霍尔传感器与中断函数初始化
     pinMode(2, INPUT);
     attachInterrupt(digitalPinToInterrupt(hallPin), hall_speed, RISING);
+
+    //触摸按钮中断函数初始化
+    pinMode(3, INPUT);
+    attachInterrupt(digitalPinToInterrupt(buttonPin), button_touch, RISING);
 }
 
 void loop() {  
@@ -144,20 +158,20 @@ void loop() {
     const vec3_t VEC = {1, 1, 0};
     vec3_t v = fusion.projectVector(VEC, GLOBAL_FRAME);
 
-    // Display vectors:
-    Serial.print( " x = " );
-    printVector( x );
-    Serial.print( " | y = " );
-    printVector( y );
-    Serial.print( " | z = " );
-    printVector( z );
-    Serial.print( " | v = " );
-    printVector( v );
+    // // Display vectors:
+    // Serial.print( " x = " );
+    // printVector( x );
+    // Serial.print( " | y = " );
+    // printVector( y );
+    // Serial.print( " | z = " );
+    // printVector( z );
+    // Serial.print( " | v = " );
+    // printVector( v );
 
-    // Display quaternion  
-    Serial.print( " | q = " );
-    printQuat( fusion.getQuat() );  
-    Serial.println();
+    // // Display quaternion  
+    // Serial.print( " | q = " );
+    // printQuat( fusion.getQuat() );  
+    // Serial.println();
 
     // 更新角速度（这已经是空间中的角速度）
     float omega_x = imu.gx();
@@ -176,6 +190,14 @@ void loop() {
 
     //////////////////////////////////
 
+    DHT.read11(dhtPin);
+
+    // Serial.print(DHT.humidity, 1);
+    // Serial.print(",\t");
+    // Serial.println(DHT.temperature, 1);
+
+    //////////////////////////////////
+
     if(millis() - hall_it > 3*1000) {
         hall_v = 0.00;
     }
@@ -186,6 +208,8 @@ void loop() {
         draw();
     } while( u8g.nextPage() );
     
+
+    Serial.println(millis());
     // rebuild the picture after some delay
     delay(deltaTime);
 
