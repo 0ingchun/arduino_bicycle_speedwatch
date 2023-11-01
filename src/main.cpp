@@ -5,18 +5,18 @@
 // #include <MPU6050_tockn.h>
 #include <dht.h>
 #include <Wire.h>
-#include <SPI.h>
+// #include <SPI.h>
 #include "U8glib.h"
 #include "basicMPU6050.h"
-#include "imuFilter.h"
+// #include "imuFilter.h"
 
 #include <main.h>
 
 basicMPU6050<> imu;
 
-imuFilter fusion;
+// imuFilter fusion;
 
-vec3_t velocity = {0, 0, 0};  // 初始化速度为0
+// vec3_t velocity = {0, 0, 0};  // 初始化速度为0
 float deltaTime = 0.01;  // 假设你每10毫秒读取一次数据
 
 // U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NONE|U8G_I2C_OPT_DEV_0);	// I2C / TWI 
@@ -26,14 +26,23 @@ const int hallPin = 2;  // 按钮连接的引脚
 const int ledPin = 13;  // LED连接的引脚
 const int buttonPin = 3;  // 按钮连接的引脚
 const int dhtPin = 5;  // 按钮连接的引脚
-
 // #define PI 3.141592654
 
 dht DHT;
 
 // ========= hall functions ===========
 unsigned long hall_dt = 0 , hall_it = 0;
-double hall_v;
+double hall_v = 0;
+int hall_v_MAX = 0;
+
+void cal_MAX_v()
+{
+    if (hall_v > hall_v_MAX)
+    {
+        hall_v_MAX = hall_v;
+    }
+    Serial.println(hall_v_MAX);
+}
 
 void hall_speed(void) {
     Serial.println("void hall_speed()");
@@ -41,27 +50,28 @@ void hall_speed(void) {
     hall_dt = millis() - hall_it;
     Serial.println(hall_dt);
 
-    hall_v = ((64*0.01*PI)/(hall_dt*0.001))*3.6;   //km/h
+    hall_v = ((64*0.01*PI)/(hall_dt*0.001))*3.5;   //km/h
     Serial.println(hall_v);
+    cal_MAX_v();
 
     hall_it = millis();
 }
 
 // ========= imu functions ===========
 
-void printVector( vec3_t r ) {
-    Serial.print( r.x, 2 );
-    Serial.print( "," );
-    Serial.print( r.y, 2 );
-    Serial.print( "," );
-    Serial.print( r.z, 2 );
-}
+// void printVector( vec3_t r ) {
+//     Serial.print( r.x, 2 );
+//     Serial.print( "," );
+//     Serial.print( r.y, 2 );
+//     Serial.print( "," );
+//     Serial.print( r.z, 2 );
+// }
 
-void printQuat( quat_t q ) {
-    Serial.print( q.w );
-    Serial.print( "," );
-    printVector( q.v );
-    }
+// void printQuat( quat_t q ) {
+//     Serial.print( q.w );
+//     Serial.print( "," );
+//     printVector( q.v );
+//     }
 
 // ========= oled functions ===========
 
@@ -70,33 +80,86 @@ void u8g_drawNumber(int x, int y, float number) {
   u8g.print(number); // 打印数字
 }
 
-void draw(void) {
-    // graphic commands to redraw the complete screen should be placed here  
-    u8g.setFont(u8g_font_unifont);
-    // u8g.setFont(u8g_font_osb21);
-    // u8g.drawStr( 0, 10, "Hello World!");
-    u8g.drawStr( 0, 12, "Vh : ");
-    u8g_drawNumber(40, 12, hall_v);
-    u8g.drawStr( 95, 12, "km/h");
+int button_touch_flag = 0;
 
-    u8g.drawStr( 0, 25, "Ax = ");
-    u8g_drawNumber(40, 25, imu.ax() );
-    u8g.drawStr( 0, 40, "Ay = ");
-    u8g_drawNumber(40, 40, imu.ay() );
-    u8g.drawStr( 0, 55, "Az = ");
-    u8g_drawNumber(40, 55, imu.ax() );
-    // u8g.drawStr( 0, 25, "Vx = ");
-    // u8g_drawNumber(50, 25, imu.ax());
-    // u8g.drawStr( 0, 40, "Vy = ");
-    // u8g_drawNumber(50, 40, imu.ay());
-    // u8g.drawStr( 0, 55, "Vz = ");
-    // u8g_drawNumber(50, 55, imu.az());
+void draw(void) {
+    if (button_touch_flag == 1)
+    {
+        // // graphic commands to redraw the complete screen should be placed here  
+        // u8g.setFont(u8g_font_unifont);
+        // // u8g.setFont(u8g_font_osb21);
+        // // u8g.drawStr( 0, 10, "Hello World!");
+        // u8g.drawStr( 0, 12, "Vh : ");
+        // u8g_drawNumber(40, 12, hall_v);
+        // u8g.drawStr( 95, 12, "km/h");
+
+        // u8g.drawStr( 0, 25, "Ax = ");
+        // u8g_drawNumber(40, 25, imu.ax() );
+        // u8g.drawStr( 0, 40, "Ay = ");
+        // u8g_drawNumber(40, 40, imu.ay() );
+        // u8g.drawStr( 0, 55, "Az = ");
+        // u8g_drawNumber(40, 55, imu.ax() );
+        // // u8g.drawStr( 0, 25, "Vx = ");
+        // // u8g_drawNumber(50, 25, imu.ax());
+        // // u8g.drawStr( 0, 40, "Vy = ");
+        // // u8g_drawNumber(50, 40, imu.ay());
+        // // u8g.drawStr( 0, 55, "Vz = ");
+        // // u8g_drawNumber(50, 55, imu.az());
+
+            // graphic commands to redraw the complete screen should be placed here  
+        // u8g.setFont(u8g_font_unifont);
+        u8g.setFont(u8g_font_osb26);
+        // u8g.drawStr( 0, 10, "Hello World!");
+        // u8g.drawStr( 0, 12, "Vh : ");
+        u8g_drawNumber(5, 30, hall_v);
+
+        // u8g.setFont(u8g_font_unifont);
+        u8g.drawStr( 50, 60, "km/h");
+
+        // u8g.drawStr( 0, 25, "Ax = ");
+        // u8g_drawNumber(40, 25, imu.ax() );
+        // u8g.drawStr( 0, 40, "Ay = ");
+        // u8g_drawNumber(40, 40, imu.ay() );
+        // u8g.drawStr( 0, 55, "Az = ");
+        // u8g_drawNumber(40, 55, imu.ax() );
+    }
+    else if (button_touch_flag == 2)
+    {
+        u8g.setFont(u8g_font_osb26);
+        u8g_drawNumber(5, 30, DHT.temperature);
+        u8g.drawStr( 85, 60, "*C");
+    }
+    else if (button_touch_flag == 3)
+    {
+        u8g.setFont(u8g_font_osb26);
+        u8g_drawNumber(5, 30, DHT.humidity);
+        u8g.drawStr( 95, 60, "%");
+    }
+    else if (button_touch_flag == 4)
+    {
+        u8g.setFont(u8g_font_osb26);
+        u8g_drawNumber(5, 30, hall_v_MAX);
+        u8g.drawStr( 10, 60, "V MAX");
+    }
+    else Serial.println("void draw Nothing");
+
 }
 
 // ========= arduino functions ===========
 
+
 void button_touch(void) {
     Serial.println("void button_touch()");
+    delay(10);
+    if(digitalRead(buttonPin) == HIGH)
+    {
+        button_touch_flag++;
+        if (button_touch_flag > 4) 
+        {
+            button_touch_flag = 0;
+        }
+    }
+    Serial.println(button_touch_flag);
 }
 
 // ========= arduino functions ===========
@@ -128,6 +191,7 @@ void button_touch(void) {
     pinMode(8, OUTPUT);
     
     //清空屏幕内容？？怎么写
+    // u8g.clearBuffer();
 
 
     // Calibrate imu
@@ -135,7 +199,7 @@ void button_touch(void) {
     imu.setBias();
     
     // Initialize filter: 
-    fusion.setup( imu.ax(), imu.ay(), imu.az() );
+    // fusion.setup( imu.ax(), imu.ay(), imu.az() );
 
     //霍尔传感器与中断函数初始化
     pinMode(2, INPUT);
@@ -148,15 +212,15 @@ void button_touch(void) {
 
 void loop() {  
     // Update filter:
-    fusion.update( imu.gx(), imu.gy(), imu.gz(), imu.ax(), imu.ay(), imu.az() );    
+    // fusion.update( imu.gx(), imu.gy(), imu.gz(), imu.ax(), imu.ay(), imu.az() );    
 
-    // Unit vectors of rectangular coodinates [Choose between GLOBAL_FRAME and LOCAL_FRAME]
-    vec3_t x = fusion.getXaxis(GLOBAL_FRAME);
-    vec3_t y = fusion.getYaxis(GLOBAL_FRAME);
-    vec3_t z = fusion.getZaxis(GLOBAL_FRAME);
+    // // Unit vectors of rectangular coodinates [Choose between GLOBAL_FRAME and LOCAL_FRAME]
+    // vec3_t x = fusion.getXaxis(GLOBAL_FRAME);
+    // vec3_t y = fusion.getYaxis(GLOBAL_FRAME);
+    // vec3_t z = fusion.getZaxis(GLOBAL_FRAME);
 
-    const vec3_t VEC = {1, 1, 0};
-    vec3_t v = fusion.projectVector(VEC, GLOBAL_FRAME);
+    // const vec3_t VEC = {1, 1, 0};
+    // vec3_t v = fusion.projectVector(VEC, GLOBAL_FRAME);
 
     // // Display vectors:
     // Serial.print( " x = " );
@@ -184,9 +248,9 @@ void loop() {
     float az = imu.az() - (- 2.00);
     
     // 从加速度计算速度
-    velocity.x += ax * deltaTime;
-    velocity.y += ay * deltaTime;
-    velocity.z += az * deltaTime;
+    // velocity.x += ax * deltaTime;
+    // velocity.y += ay * deltaTime;
+    // velocity.z += az * deltaTime;
 
     //////////////////////////////////
 
