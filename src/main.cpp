@@ -17,7 +17,7 @@ basicMPU6050<> imu;
 // imuFilter fusion;
 
 // vec3_t velocity = {0, 0, 0};  // 初始化速度为0
-float deltaTime = 0.01;  // 假设你每10毫秒读取一次数据
+float deltaTime = 1;  // 假设你每10毫秒读取一次数据
 
 // U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NONE|U8G_I2C_OPT_DEV_0);	// I2C / TWI 
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_DEV_0|U8G_I2C_OPT_NO_ACK|U8G_I2C_OPT_FAST);	// Fast I2C / TWI 
@@ -32,8 +32,7 @@ dht DHT;
 
 // ========= hall functions ===========
 unsigned long hall_dt = 0 , hall_it = 0 , touch_it = 0;
-double hall_v = 0 , hall_v_temp = 0;
-float hall_v_MAX = 0;
+double hall_v = 0 , hall_v_temp = 0 , hall_v_MAX = 0;
 float hall_mile = 0;
 
 void cal_MAX_v()
@@ -49,13 +48,13 @@ void hall_speed(void) {
     Serial.println("void hall_speed()");
 
     hall_v_temp = ((64*0.01*PI)/(hall_dt*0.001))*3.5;   //km/h
-    if (hall_v_temp > 0 && hall_v_temp < 260)
+    if (hall_v_temp >= 0 && hall_v_temp <= 260)
     {
         hall_v = hall_v_temp;
     }
     else Serial.println("hallVtemp : error");
-    Serial.println(hall_v);
     cal_MAX_v();
+    Serial.println(hall_v);
 }
 
 void hall_odo(void) {
@@ -145,6 +144,7 @@ void draw(void) {
         }
         else if (button_touch_flag == 4)
         {
+            // 高于1000m自动转单位km
             u8g.setFont(u8g_font_osb26);
             if (hall_mile <= 999.99)
             {
@@ -162,7 +162,17 @@ void draw(void) {
         {
             u8g.setFont(u8g_font_osb26);
             u8g_drawNumber(5, 30, hall_v_MAX);
-            u8g.drawStr( 10, 60, "V MAX");
+            u8g.drawStr( 10, 60, "V max");
+        }
+        else if (button_touch_flag == 6)
+        {
+            u8g.setFont(u8g_font_unifont);
+            u8g.drawStr( 0, 25, "Ax = ");
+            u8g_drawNumber(40, 25, (-1)*imu.ax() );
+            u8g.drawStr( 0, 40, "Ay = ");
+            u8g_drawNumber(40, 40, imu.ay() );
+            u8g.drawStr( 0, 55, "Az = ");
+            u8g_drawNumber(40, 55, (-1)*imu.az() );
         }
         else Serial.println("void draw Nothing");
     }
@@ -187,7 +197,7 @@ void button_touch(void) {
         while(digitalRead(buttonPin) == HIGH){
         }
         button_touch_flag++;
-        if (button_touch_flag > 5) 
+        if (button_touch_flag > 6) 
         {
             button_touch_flag = 0;
         }
