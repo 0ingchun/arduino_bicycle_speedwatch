@@ -19,3 +19,10 @@
 - Touch Sensor
 - DS1306 OLED 128*64
 - Wire*n
+
+## 接綫
+3.7v INPUT -> 5V
+霍爾原件 D2
+觸摸按鈕 D3
+DHT11 D5
+MPU6050,OLED SLC->D5 SDA->D4

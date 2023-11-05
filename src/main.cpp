@@ -31,9 +31,10 @@ const int dhtPin = 5;  // 按钮连接的引脚
 dht DHT;
 
 // ========= hall functions ===========
-unsigned long hall_dt = 0 , hall_it = 0;
-double hall_v = 0;
-int hall_v_MAX = 0;
+unsigned long hall_dt = 0 , hall_it = 0 , touch_it = 0;
+double hall_v = 0 , hall_v_temp = 0;
+float hall_v_MAX = 0;
+float hall_mile = 0;
 
 void cal_MAX_v()
 {
@@ -47,14 +48,19 @@ void cal_MAX_v()
 void hall_speed(void) {
     Serial.println("void hall_speed()");
 
-    hall_dt = millis() - hall_it;
-    Serial.println(hall_dt);
-
-    hall_v = ((64*0.01*PI)/(hall_dt*0.001))*3.5;   //km/h
+    hall_v_temp = ((64*0.01*PI)/(hall_dt*0.001))*3.5;   //km/h
+    if (hall_v_temp > 0 && hall_v_temp < 260)
+    {
+        hall_v = hall_v_temp;
+    }
+    else Serial.println("hallVtemp : error");
     Serial.println(hall_v);
     cal_MAX_v();
+}
 
-    hall_it = millis();
+void hall_odo(void) {
+    Serial.println("void hall_odo()");
+    hall_mile = hall_mile + 0.7*PI;
 }
 
 // ========= imu functions ===========
@@ -81,67 +87,92 @@ void u8g_drawNumber(int x, int y, float number) {
 }
 
 int button_touch_flag = 0;
+bool power_on_flag = 1;
 
 void draw(void) {
-    if (button_touch_flag == 1)
-    {
-        // // graphic commands to redraw the complete screen should be placed here  
-        // u8g.setFont(u8g_font_unifont);
-        // // u8g.setFont(u8g_font_osb21);
-        // // u8g.drawStr( 0, 10, "Hello World!");
-        // u8g.drawStr( 0, 12, "Vh : ");
-        // u8g_drawNumber(40, 12, hall_v);
-        // u8g.drawStr( 95, 12, "km/h");
+    if (power_on_flag == 0) {
+        if (button_touch_flag == 1)
+        {
+            // // graphic commands to redraw the complete screen should be placed here  
+            // u8g.setFont(u8g_font_unifont);
+            // // u8g.setFont(u8g_font_osb21);
+            // // u8g.drawStr( 0, 10, "Hello World!");
+            // u8g.drawStr( 0, 12, "Vh : ");
+            // u8g_drawNumber(40, 12, hall_v);
+            // u8g.drawStr( 95, 12, "km/h");
 
-        // u8g.drawStr( 0, 25, "Ax = ");
-        // u8g_drawNumber(40, 25, imu.ax() );
-        // u8g.drawStr( 0, 40, "Ay = ");
-        // u8g_drawNumber(40, 40, imu.ay() );
-        // u8g.drawStr( 0, 55, "Az = ");
-        // u8g_drawNumber(40, 55, imu.ax() );
-        // // u8g.drawStr( 0, 25, "Vx = ");
-        // // u8g_drawNumber(50, 25, imu.ax());
-        // // u8g.drawStr( 0, 40, "Vy = ");
-        // // u8g_drawNumber(50, 40, imu.ay());
-        // // u8g.drawStr( 0, 55, "Vz = ");
-        // // u8g_drawNumber(50, 55, imu.az());
+            // u8g.drawStr( 0, 25, "Ax = ");
+            // u8g_drawNumber(40, 25, imu.ax() );
+            // u8g.drawStr( 0, 40, "Ay = ");
+            // u8g_drawNumber(40, 40, imu.ay() );
+            // u8g.drawStr( 0, 55, "Az = ");
+            // u8g_drawNumber(40, 55, imu.ax() );
+            // // u8g.drawStr( 0, 25, "Vx = ");
+            // // u8g_drawNumber(50, 25, imu.ax());
+            // // u8g.drawStr( 0, 40, "Vy = ");
+            // // u8g_drawNumber(50, 40, imu.ay());
+            // // u8g.drawStr( 0, 55, "Vz = ");
+            // // u8g_drawNumber(50, 55, imu.az());
 
-            // graphic commands to redraw the complete screen should be placed here  
-        // u8g.setFont(u8g_font_unifont);
-        u8g.setFont(u8g_font_osb26);
-        // u8g.drawStr( 0, 10, "Hello World!");
-        // u8g.drawStr( 0, 12, "Vh : ");
-        u8g_drawNumber(5, 30, hall_v);
+                // graphic commands to redraw the complete screen should be placed here  
+            // u8g.setFont(u8g_font_unifont);
+            u8g.setFont(u8g_font_osb26);
+            // u8g.drawStr( 0, 10, "Hello World!");
+            // u8g.drawStr( 0, 12, "Vh : ");
+            u8g_drawNumber(5, 30, hall_v);
 
-        // u8g.setFont(u8g_font_unifont);
-        u8g.drawStr( 50, 60, "km/h");
+            // u8g.setFont(u8g_font_unifont);
+            u8g.drawStr( 50, 60, "km/h");
 
-        // u8g.drawStr( 0, 25, "Ax = ");
-        // u8g_drawNumber(40, 25, imu.ax() );
-        // u8g.drawStr( 0, 40, "Ay = ");
-        // u8g_drawNumber(40, 40, imu.ay() );
-        // u8g.drawStr( 0, 55, "Az = ");
-        // u8g_drawNumber(40, 55, imu.ax() );
+            // u8g.drawStr( 0, 25, "Ax = ");
+            // u8g_drawNumber(40, 25, imu.ax() );
+            // u8g.drawStr( 0, 40, "Ay = ");
+            // u8g_drawNumber(40, 40, imu.ay() );
+            // u8g.drawStr( 0, 55, "Az = ");
+            // u8g_drawNumber(40, 55, imu.ax() );
+        }
+        else if (button_touch_flag == 2)
+        {
+            u8g.setFont(u8g_font_osb26);
+            u8g_drawNumber(5, 30, DHT.temperature);
+            u8g.drawStr( 85, 60, "*C");
+        }
+        else if (button_touch_flag == 3)
+        {
+            u8g.setFont(u8g_font_osb26);
+            u8g_drawNumber(5, 30, DHT.humidity);
+            u8g.drawStr( 95, 60, "%");
+        }
+        else if (button_touch_flag == 4)
+        {
+            u8g.setFont(u8g_font_osb26);
+            if (hall_mile <= 999.99)
+            {
+                u8g_drawNumber(5, 30, hall_mile);
+                u8g.drawStr( 95, 60, "m");
+            }
+            else
+            {
+                u8g_drawNumber(5, 30, hall_mile / 1000);
+                u8g.drawStr( 85, 60, "km");
+            }
+
+        }
+        else if (button_touch_flag == 5)
+        {
+            u8g.setFont(u8g_font_osb26);
+            u8g_drawNumber(5, 30, hall_v_MAX);
+            u8g.drawStr( 10, 60, "V MAX");
+        }
+        else Serial.println("void draw Nothing");
     }
-    else if (button_touch_flag == 2)
-    {
+    else {
         u8g.setFont(u8g_font_osb26);
-        u8g_drawNumber(5, 30, DHT.temperature);
-        u8g.drawStr( 85, 60, "*C");
+        u8g.drawStr( 10, 10, "J master");
+        u8g.drawStr( 5, 60, "StopWatch");
+        delay (1500);
+        power_on_flag = 0;
     }
-    else if (button_touch_flag == 3)
-    {
-        u8g.setFont(u8g_font_osb26);
-        u8g_drawNumber(5, 30, DHT.humidity);
-        u8g.drawStr( 95, 60, "%");
-    }
-    else if (button_touch_flag == 4)
-    {
-        u8g.setFont(u8g_font_osb26);
-        u8g_drawNumber(5, 30, hall_v_MAX);
-        u8g.drawStr( 10, 60, "V MAX");
-    }
-    else Serial.println("void draw Nothing");
 
 }
 
@@ -153,13 +184,31 @@ void button_touch(void) {
     delay(10);
     if(digitalRead(buttonPin) == HIGH)
     {
+        while(digitalRead(buttonPin) == HIGH){
+        }
         button_touch_flag++;
-        if (button_touch_flag > 4) 
+        if (button_touch_flag > 5) 
         {
             button_touch_flag = 0;
         }
     }
     Serial.println(button_touch_flag);
+
+    touch_it = millis();
+}
+
+// boll daiji_flag = 0;
+void hall_touch(void) {
+    Serial.println("void hall_touch()");
+    
+    hall_dt = millis() - hall_it;
+    Serial.println(hall_dt);
+
+    hall_speed();
+    hall_odo();
+    if (button_touch_flag == 0) button_touch_flag = 1;
+    
+    hall_it = millis();
 }
 
 // ========= arduino functions ===========
@@ -203,7 +252,7 @@ void button_touch(void) {
 
     //霍尔传感器与中断函数初始化
     pinMode(2, INPUT);
-    attachInterrupt(digitalPinToInterrupt(hallPin), hall_speed, RISING);
+    attachInterrupt(digitalPinToInterrupt(hallPin), hall_touch, RISING);
 
     //触摸按钮中断函数初始化
     pinMode(3, INPUT);
@@ -262,8 +311,12 @@ void loop() {
 
     //////////////////////////////////
 
-    if(millis() - hall_it > 3*1000) {
+    if(millis() - hall_it > 5*1000) {   // 超时未启动自行车速度置零
         hall_v = 0.00;
+    }
+
+    if(millis() - hall_it > 60*1000 && millis() - touch_it > 60*1000) {   // 超时未启动自行车画面flag（黑屏画面）
+        button_touch_flag = 0;
     }
 
     // picture loop
