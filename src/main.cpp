@@ -12,7 +12,12 @@
 
 #include <main.h>
 
-basicMPU6050<> imu;
+// 这里的时间秒数超过30会失效，原因不明
+#define V_TO_ZERO_TIME_SEC 6 // 6秒速度不更新则速度置0
+#define BACK_HOME_TIME_SEC 25 // 30秒按钮无动作回1画面
+#define SLEEPH_TIME_SEC 32 // 60秒无动作则睡眠
+
+basicMPU6050<> imu; // 创建MPU6050六轴加速度计对象
 
 // imuFilter fusion;
 
@@ -22,20 +27,20 @@ float deltaTime = 1;  // 假设你每10毫秒读取一次数据
 // U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NONE|U8G_I2C_OPT_DEV_0);	// I2C / TWI 
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_DEV_0|U8G_I2C_OPT_NO_ACK|U8G_I2C_OPT_FAST);	// Fast I2C / TWI 
 
-const int hallPin = 2;  // 按钮连接的引脚
-const int ledPin = 13;  // LED连接的引脚
-const int buttonPin = 3;  // 按钮连接的引脚
-const int dhtPin = 5;  // 按钮连接的引脚
+const int hallPin = 2;  // 霍尔传感器引脚
+const int ledPin = 13;  // LED引脚
+const int buttonPin = 3;  // 按钮引脚
+const int dhtPin = 5;  // DHT11温湿度传感器引脚
 // #define PI 3.141592654
 
-dht DHT;
+dht DHT;    // 创建DHT11温湿度传感器对象
 
 // ========= hall functions ===========
 unsigned long hall_dt = 0 , hall_it = 0 , touch_it = 0;
 double hall_v = 0 , hall_v_temp = 0 , hall_v_MAX = 0;
 float hall_mile = 0;
 
-void cal_MAX_v()
+void cal_MAX_v()    // 计算最大速度
 {
     if (hall_v > hall_v_MAX)
     {
@@ -44,20 +49,22 @@ void cal_MAX_v()
     Serial.println(hall_v_MAX);
 }
 
-void hall_speed(void) {
+void hall_speed(void) {   // 霍尔速度计算函数
     Serial.println("void hall_speed()");
 
     hall_v_temp = ((64*0.01*PI)/(hall_dt*0.001))*3.5;   //km/h
-    if (hall_v_temp >= 0 && hall_v_temp <= 260)
+
+    if (hall_v_temp >= 0 && hall_v_temp <= 260) // 限制速度范围，滤除不可能的速度杂波
     {
         hall_v = hall_v_temp;
     }
     else Serial.println("hallVtemp : error");
-    cal_MAX_v();
+
+    cal_MAX_v();    //  计算最大速度
     Serial.println(hall_v);
 }
 
-void hall_odo(void) {
+void hall_odo(void) {   // 里程累加函数
     Serial.println("void hall_odo()");
     hall_mile = hall_mile + 0.7*PI;
 }
@@ -80,17 +87,17 @@ void hall_odo(void) {
 
 // ========= oled functions ===========
 
-void u8g_drawNumber(int x, int y, float number) {
+void u8g_drawNumber(int x, int y, float number) { // oled绘制数字函数
   u8g.setPrintPos(x, y); // 设置输出位置
   u8g.print(number); // 打印数字
 }
 
-int button_touch_flag = 0;
-bool power_on_flag = 1;
+int button_touch_flag = 0;  // 按钮触摸标志，被按钮中断函数改变，被绘图函数读取
+bool power_on_flag = 1; //  开机启动用flag，显示开机画面一次后失效
 
-void draw(void) {
+void draw(void) {   //绘图函数，通过button_touch_flag选择绘制的画面
     if (power_on_flag == 0) {
-        if (button_touch_flag == 1)
+        if (button_touch_flag == 1)  // 开机画面
         {
             // // graphic commands to redraw the complete screen should be placed here  
             // u8g.setFont(u8g_font_unifont);
@@ -130,21 +137,21 @@ void draw(void) {
             // u8g.drawStr( 0, 55, "Az = ");
             // u8g_drawNumber(40, 55, imu.ax() );
         }
-        else if (button_touch_flag == 2)
+        else if (button_touch_flag == 2)    // 温度画面
         {
             u8g.setFont(u8g_font_osb26);
             u8g_drawNumber(5, 30, DHT.temperature);
             u8g.drawStr( 85, 60, "*C");
         }
-        else if (button_touch_flag == 3)
+        else if (button_touch_flag == 3)    // 湿度画面
         {
             u8g.setFont(u8g_font_osb26);
             u8g_drawNumber(5, 30, DHT.humidity);
             u8g.drawStr( 95, 60, "%");
         }
-        else if (button_touch_flag == 4)
+        else if (button_touch_flag == 4)    // 里程画面
         {
-            // 高于1000m自动转单位km
+            // 高于1000m自动转单位km显示
             u8g.setFont(u8g_font_osb26);
             if (hall_mile <= 999.99)
             {
@@ -158,13 +165,19 @@ void draw(void) {
             }
 
         }
-        else if (button_touch_flag == 5)
+        else if (button_touch_flag == 5)    // 最大速度画面
         {
             u8g.setFont(u8g_font_osb26);
             u8g_drawNumber(5, 30, hall_v_MAX);
             u8g.drawStr( 10, 60, "V max");
         }
-        else if (button_touch_flag == 6)
+        else if (button_touch_flag == 6)    // 秒表画面
+        {
+            u8g.setFont(u8g_font_osb26);
+            u8g_drawNumber(5, 30, (millis()*0.001));    // 秒
+            u8g.drawStr( 70, 60, "sec");
+        }
+        else if (button_touch_flag == 7)    // 加速计画面
         {
             u8g.setFont(u8g_font_unifont);
             u8g.drawStr( 0, 25, "Ax = ");
@@ -174,13 +187,14 @@ void draw(void) {
             u8g.drawStr( 0, 55, "Az = ");
             u8g_drawNumber(40, 55, (-1)*imu.az() );
         }
-        else Serial.println("void draw Nothing");
+        else Serial.println("void draw Nothing");   // 空画面
     }
-    else {
+    else {  // 开机动画
         u8g.setFont(u8g_font_osb26);
         u8g.drawStr( 10, 10, "J master");
         u8g.drawStr( 5, 60, "StopWatch");
-        delay (1500);
+        // delay (1500);
+        delay(10);
         power_on_flag = 0;
     }
 
@@ -189,43 +203,54 @@ void draw(void) {
 // ========= arduino functions ===========
 
 
-void button_touch(void) {
+void button_touch(void) {   // 按钮触摸中断函数，改变button_touch_flag
     Serial.println("void button_touch()");
     delay(10);
     if(digitalRead(buttonPin) == HIGH)
     {
+        // delay(500);
         while(digitalRead(buttonPin) == HIGH){
         }
         button_touch_flag++;
-        if (button_touch_flag > 6) 
+        if (button_touch_flag > 7)  // 高于菜单个数则flag置零
         {
             button_touch_flag = 0;
         }
     }
+    // else if(digitalRead(buttonPin) == LOW)
+    // {
+    //     while(digitalRead(buttonPin) == LOW){
+    //     }
+    //     button_touch_flag--;
+    //     if (button_touch_flag <= 0)  // 高于菜单个数则flag置零
+    //     {
+    //         button_touch_flag = 0;
+    //     }
+    // }
     Serial.println(button_touch_flag);
 
-    touch_it = millis();
+    touch_it = millis();    //  执行按钮中断退出的时间
 }
 
 // boll daiji_flag = 0;
-void hall_touch(void) {
+void hall_touch(void) { // 霍尔传感器中断函数，触发后操作霍尔速度和最大霍尔速度
     Serial.println("void hall_touch()");
     
-    hall_dt = millis() - hall_it;
+    hall_dt = millis() - hall_it;   //  计算霍尔传感器中断间隔时间
     Serial.println(hall_dt);
 
     hall_speed();
     hall_odo();
     if (button_touch_flag == 0) button_touch_flag = 1;
     
-    hall_it = millis();
+    hall_it = millis(); // 执行霍尔中断退出的时间
 }
 
 // ========= arduino functions ===========
 
     void setup() {
     Serial.begin(115200);
-    delay(50);
+    delay(20);
 
         // flip screen, if required
     // u8g.setRot180();
@@ -297,14 +322,14 @@ void loop() {
     // Serial.println();
 
     // 更新角速度（这已经是空间中的角速度）
-    float omega_x = imu.gx();
-    float omega_y = imu.gy();
-    float omega_z = imu.gz();
+    // float omega_x = imu.gx();
+    // float omega_y = imu.gy();
+    // float omega_z = imu.gz();
     
-    // 更新加速度
-    float ax = imu.ax() - (0.53);
-    float ay = imu.ay() - (- 0.52);
-    float az = imu.az() - (- 2.00);
+    // // 更新加速度
+    // float ax = imu.ax() - (0.53);
+    // float ay = imu.ay() - (- 0.52);
+    // float az = imu.az() - (- 2.00);
     
     // 从加速度计算速度
     // velocity.x += ax * deltaTime;
@@ -313,7 +338,7 @@ void loop() {
 
     //////////////////////////////////
 
-    DHT.read11(dhtPin);
+    DHT.read11(dhtPin); // 更新并读取温湿度
 
     // Serial.print(DHT.humidity, 1);
     // Serial.print(",\t");
@@ -321,23 +346,32 @@ void loop() {
 
     //////////////////////////////////
 
-    if(millis() - hall_it > 5*1000) {   // 超时未启动自行车速度置零
+    if ((millis() - hall_it) >= (V_TO_ZERO_TIME_SEC*1000)) {   // 自行车速度为0超时速度置零
         hall_v = 0.00;
     }
 
-    if(millis() - hall_it > 60*1000 && millis() - touch_it > 60*1000) {   // 超时未启动自行车画面flag（黑屏画面）
+    if ((millis() - touch_it) >= (BACK_HOME_TIME_SEC*1000) && (millis() - hall_it) <= (BACK_HOME_TIME_SEC*1000)) {   // 骑行中，按钮超时未触发返回画面1
+        button_touch_flag = 1;
+    }
+
+    // 打印间隔
+    Serial.println(millis() - hall_it);
+    Serial.println(millis() - touch_it);
+
+    if ((millis() - hall_it) >= (SLEEPH_TIME_SEC*1000) && (millis() - touch_it) >= (SLEEPH_TIME_SEC*1000)) {   // 超时未启动自行车或未触发按钮画面flag置零（黑屏画面）
         button_touch_flag = 0;
     }
 
     // picture loop
-    u8g.firstPage();  
+    u8g.firstPage();  // oled绘图
     do {
         draw();
     } while( u8g.nextPage() );
     
 
-    Serial.println(millis());
+    // Serial.println(millis());
+
     // rebuild the picture after some delay
-    delay(deltaTime);
+    delay(deltaTime);   // 轮询间隔时间，防死机
 
 }
